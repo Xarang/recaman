@@ -11,16 +11,20 @@ namespace recaman
     public class RecamanComputer
     {
 
-        static int numProcs = Environment.ProcessorCount;
-        static int concurrencyLevel = numProcs * 2;
-        static int initialCapacity = 256;
+        public static int numProcs = Environment.ProcessorCount;
+        public static int concurrencyLevel = numProcs * 2;
+        public static int initialCapacity = 256;
 
-        private ConcurrentDictionary<int, decimal> values;
+        private ConcurrentDictionary<int, decimal> safe_values;
+        private Dictionary<int, decimal> values;
+
+        private decimal reverse_return_value = 0;
 
         public RecamanComputer()
         {
 
-            this.values = new ConcurrentDictionary<int, decimal>(concurrencyLevel, initialCapacity);
+            this.safe_values = new ConcurrentDictionary<int, decimal>(concurrencyLevel, initialCapacity);
+            this.values = new Dictionary<int, decimal>();
         }
 
 
@@ -40,7 +44,36 @@ namespace recaman
             return res;
         }
 
-        private decimal basic_recaman(int n)
+        private void multi_recaman_reverse(int n, decimal prev, int max)
+        {
+            //Console.WriteLine($"entering: {n}");
+            if (n == max)
+            {
+                reverse_return_value = (prev >= n && !values.Values.Contains(prev - n)) ? prev - n : prev + n;
+            }
+            else
+            {
+                decimal res = (prev >= n && !values.Values.Contains(prev - n)) ? prev - n : prev + n;
+                values.TryAdd(n, res);
+                Task computeNext = Task.Run(() => multi_recaman_reverse(n + 1, res, max));
+            }
+        }
+
+        private decimal recursive_recaman(int n)
+        {
+            //Console.WriteLine($"entering: {n}");
+            if (n == 0)
+            {
+                return 0;
+            }
+            var prev = recursive_recaman(n - 1);
+            decimal res = (prev >= n && !values.Values.Contains(prev - n)) ? prev - n : prev + n;
+
+            values.TryAdd(n, res);
+            return res;
+        }
+
+        private decimal iterative_recaman(int n)
         {
             if (n <= 0)
                 return 0;
@@ -72,30 +105,64 @@ namespace recaman
 
         public struct Computation
         {
-            int input;
-            long time;
-            decimal result;
+            public int input;
+            public long time;
+            public decimal result;
+            public ComputationMethod method;
 
-            public Computation(int input, long time, decimal result)
+            public Computation(int input, long time, decimal result, ComputationMethod method)
             {
                 this.input = input;
                 this.time = time;
                 this.result = result;
+                this.method = method;
             }
 
             public override string ToString()
             {
-                return $"{input}:  {result}   (computed in {time})";
+                return $"{method}  --> {input}:  {result}   (computed in {time})";
             }
         }
 
-        public Computation PerformCompute(int n, bool useMultithreading = true)
+        public enum ComputationMethod
+        {
+            ITERATIVE,
+            RECURSIVE,
+            MULTITHREADED,
+            MULTITHREADED_BIS
+        }
+
+        public Computation PerformCompute(int n, ComputationMethod method)
         {
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            Decimal value = useMultithreading ? multi_recaman(n) : basic_recaman(n);
+            Func<ComputationMethod, decimal> get_res = (method) =>
+            {
+                switch (method)
+                {
+                    case ComputationMethod.ITERATIVE:
+                        return iterative_recaman(n);
+                    case ComputationMethod.MULTITHREADED:
+                        return multi_recaman(n);
+                    case ComputationMethod.RECURSIVE:
+                        return recursive_recaman(n);
+                    case ComputationMethod.MULTITHREADED_BIS:
+                        multi_recaman_reverse(1, 0, n);
+                        while (reverse_return_value == 0)
+                        {
+                            //
+                        }
+                        return reverse_return_value;
+                }
+                return 0;
+            };
+            decimal value = get_res(method);
             stopwatch.Stop();
-            return new Computation(n, stopwatch.ElapsedMilliseconds, value);
+
+
+            // collect garbage at the end to make sure benchmarking
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Optimized, blocking: true);
+            return new Computation(n, stopwatch.ElapsedMilliseconds, value, method);
         }
 
     }
