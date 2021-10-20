@@ -24,9 +24,14 @@ namespace recaman
 
         public static void Main()
         {
-            evaluate(20, 1000, RecamanComputer.ComputationMethod.MULTITHREADED);
-            evaluate(20, 1000, RecamanComputer.ComputationMethod.MULTITHREADED_BIS);
+            //evaluate(20, 1000, RecamanComputer.ComputationMethod.MULTITHREADED);
+            //evaluate(20, 1000, RecamanComputer.ComputationMethod.MULTITHREADED_BIS);
 
+            for (int i = 0; i < 10; i++)
+            {
+                RecamanComputer.Computation res = new RecamanComputer().PerformCompute(i, RecamanComputer.ComputationMethod.MULTITHREADED_BIS);
+                Console.WriteLine(res.ToString());
+            }
 
             //for (int i = 0; i < 1000000; i += 50)
 

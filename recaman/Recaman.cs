@@ -25,6 +25,7 @@ namespace recaman
 
             this.safe_values = new ConcurrentDictionary<int, decimal>(concurrencyLevel, initialCapacity);
             this.values = new Dictionary<int, decimal>();
+            this.values.Add(0, 0);
         }
 
 
@@ -138,6 +139,10 @@ namespace recaman
             stopwatch.Start();
             Func<ComputationMethod, decimal> get_res = (method) =>
             {
+                if (n == 0)
+                {
+                    return 0;
+                }
                 switch (method)
                 {
                     case ComputationMethod.ITERATIVE:
