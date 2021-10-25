@@ -16,7 +16,7 @@ namespace recaman
         public static int initialCapacity = 256;
 
         private ConcurrentDictionary<int, decimal> safe_values;
-        private Dictionary<int, decimal> values;
+        private HashSet<decimal> values;
 
         private decimal reverse_return_value = 0;
 
@@ -24,57 +24,89 @@ namespace recaman
         {
 
             this.safe_values = new ConcurrentDictionary<int, decimal>(concurrencyLevel, initialCapacity);
-            this.values = new Dictionary<int, decimal>();
-            this.values.Add(0, 0);
+            this.values = new HashSet<decimal>();
+            this.values.Add(0);
         }
 
 
-        private decimal multi_recaman(int n)
+        private decimal multithreaded_recursive(int n)
         {
             //Console.WriteLine($"entering: {n}");
             if (n == 0)
             {
                 return 0;
             }
-            Task<decimal> computePrev = Task<decimal>.Run(() => multi_recaman(n - 1));
+            Task<decimal> computePrev = Task<decimal>.Run(() => multithreaded_recursive(n - 1));
+
             decimal prev = computePrev.Result;
             //PrintCollection();
-            decimal res = (prev >= n && !values.Values.Contains(prev - n)) ? prev - n : prev + n;
+            decimal res = (prev >= n && !values.Contains(prev - n)) ? prev - n : prev + n;
 
-            values.TryAdd(n, res);
+            values.Add(res);
             return res;
         }
 
-        private void multi_recaman_reverse(int n, decimal prev, int max)
+        private void multithreaded_recursive_ascendant(int n, decimal prev, int max)
         {
             //Console.WriteLine($"entering: {n}");
             if (n == max)
             {
-                reverse_return_value = (prev >= n && !values.Values.Contains(prev - n)) ? prev - n : prev + n;
+                reverse_return_value = (prev >= n && !values.Contains(prev - n)) ? prev - n : prev + n;
             }
             else
             {
-                decimal res = (prev >= n && !values.Values.Contains(prev - n)) ? prev - n : prev + n;
-                values.TryAdd(n, res);
-                Task computeNext = Task.Run(() => multi_recaman_reverse(n + 1, res, max));
+                decimal res = (prev >= n && !values.Contains(prev - n)) ? prev - n : prev + n;
+                values.Add(res);
+                Task computeNext = Task.Run(() => multithreaded_recursive_ascendant(n + 1, res, max));
             }
         }
 
-        private decimal recursive_recaman(int n)
+        private void threadpool_recursive_ascendant(int n, decimal prev, int max)
+        {
+            //Console.WriteLine($"entering: {n}");
+            if (n == max)
+            {
+                reverse_return_value = (prev >= n && !values.Contains(prev - n)) ? prev - n : prev + n;
+            }
+            else
+            {
+                decimal res = (prev >= n && !values.Contains(prev - n)) ? prev - n : prev + n;
+                values.Add(res);
+                Console.WriteLine(ThreadPool.ThreadCount);
+                ThreadPool.QueueUserWorkItem((stateInfo) => multithreaded_recursive_ascendant(n + 1, res, max));
+                //Task computeNext = Task.Run(() => multithreaded_recursive_ascendant(n + 1, res, max));
+            }
+        }
+
+        private void recursive_ascendant(int n, decimal prev, int max)
+        {
+            if (n == max)
+            {
+                reverse_return_value = (prev >= n && !values.Contains(prev - n)) ? prev - n : prev + n;
+            }
+            else
+            {
+                decimal res = (prev >= n && !values.Contains(prev - n)) ? prev - n : prev + n;
+                values.Add(res);
+                recursive_ascendant(n + 1, res, max);
+            }
+        }
+
+        private decimal recursive(int n)
         {
             //Console.WriteLine($"entering: {n}");
             if (n == 0)
             {
                 return 0;
             }
-            var prev = recursive_recaman(n - 1);
-            decimal res = (prev >= n && !values.Values.Contains(prev - n)) ? prev - n : prev + n;
+            var prev = recursive(n - 1);
+            decimal res = (prev >= n && !values.Contains(prev - n)) ? prev - n : prev + n;
 
-            values.TryAdd(n, res);
+            values.Add(res);
             return res;
         }
 
-        private decimal iterative_recaman(int n)
+        private decimal iterative(int n)
         {
             if (n <= 0)
                 return 0;
@@ -129,8 +161,10 @@ namespace recaman
         {
             ITERATIVE,
             RECURSIVE,
-            MULTITHREADED,
-            MULTITHREADED_BIS
+            RECURSIVE_ASCENDANT,
+            MULTITHREADED_RECURSIVE,
+            MULTITHREADED_RECURSIVE_ASCENDANT,
+            THREADPOOL_RECURSIVE_ASCENDANT
         }
 
         public Computation PerformCompute(int n, ComputationMethod method)
@@ -146,13 +180,27 @@ namespace recaman
                 switch (method)
                 {
                     case ComputationMethod.ITERATIVE:
-                        return iterative_recaman(n);
-                    case ComputationMethod.MULTITHREADED:
-                        return multi_recaman(n);
+                        return iterative(n);
+                    case ComputationMethod.MULTITHREADED_RECURSIVE:
+                        return multithreaded_recursive(n);
                     case ComputationMethod.RECURSIVE:
-                        return recursive_recaman(n);
-                    case ComputationMethod.MULTITHREADED_BIS:
-                        multi_recaman_reverse(1, 0, n);
+                        return recursive(n);
+                    case ComputationMethod.MULTITHREADED_RECURSIVE_ASCENDANT:
+                        multithreaded_recursive_ascendant(1, 0, n);
+                        while (reverse_return_value == 0)
+                        {
+                            //
+                        }
+                        return reverse_return_value;
+                    case ComputationMethod.RECURSIVE_ASCENDANT:
+                        recursive_ascendant(1, 0, n);
+                        while (reverse_return_value == 0)
+                        {
+                            //
+                        }
+                        return reverse_return_value;
+                    case ComputationMethod.THREADPOOL_RECURSIVE_ASCENDANT:
+                        threadpool_recursive_ascendant(1, 0, n);
                         while (reverse_return_value == 0)
                         {
                             //

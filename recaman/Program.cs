@@ -13,44 +13,36 @@ namespace recaman
 
         static void evaluate(int loops, int n, RecamanComputer.ComputationMethod method)
         {
-            RecamanComputer.Computation[] results = Enumerable.Range(0, loops).ToArray().Select(x => new RecamanComputer().PerformCompute(n, method)).ToArray();
+            try
+            {
+                RecamanComputer.Computation[] results = Enumerable.Range(0, loops).ToArray().Select(x => new RecamanComputer().PerformCompute(n, method)).ToArray();
+                //TODO: make sure results are proper
 
-            //TODO: make sure results are proper
+                var mean_compute_time = results.Select(res => res.time).Sum() / results.Length;
+                Console.WriteLine($"Evaluated method {method}; computed recaman({n}) {loops} times with average compute time: {mean_compute_time}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error occured while evaluation of method {method}: " + e.ToString());
+            }
 
-            var mean_compute_time = results.Select(res => res.time).Sum() / results.Length;
-
-            Console.WriteLine($"Evaluated method {method}; computed recaman({n}) {loops} times with average compute time: {mean_compute_time}");
         }
+
+        //TODO: ThreadPool
 
         public static void Main()
         {
-            //evaluate(20, 1000, RecamanComputer.ComputationMethod.MULTITHREADED);
-            //evaluate(20, 1000, RecamanComputer.ComputationMethod.MULTITHREADED_BIS);
+            Console.WriteLine(Environment.ProcessorCount);
 
-            for (int i = 0; i < 10; i++)
-            {
-                RecamanComputer.Computation res = new RecamanComputer().PerformCompute(i, RecamanComputer.ComputationMethod.MULTITHREADED_BIS);
-                Console.WriteLine(res.ToString());
-            }
+            //evaluate(10, 10000, RecamanComputer.ComputationMethod.RECURSIVE_ASCENDANT);
 
-            //for (int i = 0; i < 1000000; i += 50)
+            //evaluate(10, 10000, RecamanComputer.ComputationMethod.MULTITHREADED_RECURSIVE);
+            //evaluate(10, 10000, RecamanComputer.ComputationMethod.MULTITHREADED_RECURSIVE_ASCENDANT);
+            evaluate(10, 10000, RecamanComputer.ComputationMethod.THREADPOOL_RECURSIVE_ASCENDANT);
+            //evaluate(10, 10000, RecamanComputer.ComputationMethod.ITERATIVE);
 
-            /*
-            {
-                RecamanComputer.Computation res = new RecamanComputer().PerformCompute(1000, RecamanComputer.ComputationMethod.MULTITHREADED);
-                Console.WriteLine(res.ToString());
-            }
-
-            //}
-
-            Console.WriteLine("----------------------------------------------");
-
-            //for (int i = 0; i < 1000000; i += 50)
-            {
-                RecamanComputer.Computation res = new RecamanComputer().PerformCompute(1000, RecamanComputer.ComputationMethod.MULTITHREADED_BIS);
-                Console.WriteLine(res.ToString());
-            }
-            */
+            //evaluate(3, 100000000, RecamanComputer.ComputationMethod.MULTITHREADED_RECURSIVE_ASCENDANT);
+            //evaluate(3, 100000000, RecamanComputer.ComputationMethod.ITERATIVE);
         }
     }
 }
